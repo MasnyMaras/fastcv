@@ -5,7 +5,7 @@
 #include "utils.cuh"
 
 
-__global__ void lut_k(const unsigned char* input, unsigned char* output, const unsigned char* lut_table, int width, int height) {
+__global__ void lut_k(const unsigned char* input, unsigned char* output, const unsigned char* lut_table, int width, int height, int channels) {
 
     int x = blockIdx.x * blockDim.x + threadIdx.x; //globalne indeksy
     int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -21,10 +21,12 @@ __global__ void lut_k(const unsigned char* input, unsigned char* output, const u
 
     //Boundry check
     if (x < width && y < height){ 
-        int idx = y * width + x;
-        unsigned char old_pixel_val = input[idx];
-        unsigned char new_pixel_val = shared_lut[old_pixel_val];
-        output[idx] = new_pixel_val;
+        int start_idx = (y * width + x)*channels;
+        for (int i = 0; i < channels; ++i){
+            int col_idx = start_idx + i;
+            unsigned char origin_val = input[col_idx];
+            output[col_idx] = shared_lut[origin_val];
+        }
     }
 
 }
@@ -41,6 +43,11 @@ torch::Tensor lut(torch::Tensor img, torch::Tensor lut_table){
     const auto height = img.size(0);
     const auto width = img.size(1);
 
+    int channels = 1;
+    if (img.dim() == 3) {
+        channels = img.size(2);
+    }
+
     dim3 blockDim(16, 16);
 
     int grid_x = ((width + blockDim.x - 1)/blockDim.x);
@@ -48,13 +55,14 @@ torch::Tensor lut(torch::Tensor img, torch::Tensor lut_table){
 
     dim3 gridDim(grid_x, grid_y);
 
-    auto result = torch::empty({height, width}, img.options());
+    auto result = torch::empty_like(img);
     lut_k<<<gridDim, blockDim, 0, at::cuda::getCurrentCUDAStream()>>>(
         img.data_ptr<unsigned char>(),
         result.data_ptr<unsigned char>(),
         lut_table.data_ptr<unsigned char>(),
         width,
-        height
+        height,
+        channels
     );
     
     C10_CUDA_KERNEL_LAUNCH_CHECK();

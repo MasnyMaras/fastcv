@@ -3,7 +3,7 @@ import torch
 import fastcv
 import numpy as np
 
-img = cv2.imread("fastcv/artifacts/diagonal_gradient.jpg", cv2.IMREAD_GRAYSCALE)
+img = cv2.imread("fastcv/artifacts/diagonal_gradient.jpg")
 img_tensor = torch.from_numpy(img).cuda()
 lut_numpy = np.arange(256, dtype=np.uint8)
 lut_numpy = 255 - lut_numpy
