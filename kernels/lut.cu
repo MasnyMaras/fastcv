@@ -4,8 +4,10 @@
 #include <torch/extension.h>
 #include "utils.cuh"
 
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
 #include <thrust/copy.h>
-#include <thrust/device_ptr.h>
 
 
 __global__ void lut_k(const unsigned char* input, unsigned char* output, const unsigned char* lut_table, int width, int height, int channels) {
